@@ -173,7 +173,8 @@ L1EGCrystalClusterProducer::L1EGCrystalClusterProducer(const edm::ParameterSet& 
    produces<l1slhc::L1EGCrystalClusterCollection>("L1EGXtalClusterNoCuts");
    produces<l1slhc::L1EGCrystalClusterCollection>("L1EGXtalClusterWithCuts");
    produces<l1extra::L1EmParticleCollection>("L1EGCollectionWithCuts");
-   
+   produces<std::vector<std::pair<DetId,float> > >("L1EGXtals");
+
    // Get tower mapping
    if (useTowerMap) {
       std::cout << "Using tower mapping for ECAL regions.  Map name: " << towerMapName << std::endl;
@@ -347,7 +348,10 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
    std::unique_ptr<l1slhc::L1EGCrystalClusterCollection> L1EGXtalClusterNoCuts (new l1slhc::L1EGCrystalClusterCollection );
    std::unique_ptr<l1slhc::L1EGCrystalClusterCollection> L1EGXtalClusterWithCuts( new l1slhc::L1EGCrystalClusterCollection );
    std::unique_ptr<l1extra::L1EmParticleCollection> L1EGCollectionWithCuts( new l1extra::L1EmParticleCollection );
-   
+
+   std::unique_ptr<std::vector<std::pair<DetId,float> > > L1EGXtals(new std::vector<std::pair<DetId,float> >());
+   for(const auto& hit : ecalhits) L1EGXtals->push_back(std::pair<DetId,float>(hit.id,hit.pt()));
+
    // Clustering algorithm
    while(true)
    {
@@ -393,6 +397,7 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
       bool electronWP98;
       bool photonWP80;
       std::vector<float> crystalPt;
+      DetIdCollection detIds;
       std::map<int, float> phiStrip;
       //std::cout << " -- iPhi: " << ehit.id.iphi() << std::endl;
       //std::cout << " -- iEta: " << ehit.id.ieta() << std::endl;
@@ -427,6 +432,7 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
             totalEnergy += hit.energy;
             hit.stale = true;
             crystalPt.push_back(hit.pt());
+	    detIds.push_back(hit.id);
             if ( debug && hit == centerhit )
                std::cout << "\x1B[32m"; // green hilight
             if ( debug && hit.isEndcapHit ) std::cout <<
@@ -589,6 +595,7 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
                   totalEnergy += hit.energy;
                   hit.stale = true;
                   crystalPt.push_back(hit.pt());
+		  detIds.push_back(hit.id);
                }
             }
          }
@@ -605,6 +612,7 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
                   totalEnergy += hit.energy;
                   hit.stale = true;
                   crystalPt.push_back(hit.pt());
+		  detIds.push_back(hit.id);
                }
             }
          }
@@ -657,6 +665,7 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
             e2x2, e2x5, e3x5, e5x5, electronWP98, photonWP80);
       // Save pt array
       cluster.SetCrystalPtInfo(crystalPt);
+      cluster.SetDetIdInfo(detIds);
       params["crystalCount"] = crystalPt.size();
       cluster.SetExperimentalParams(params);
       L1EGXtalClusterNoCuts->push_back(cluster);
@@ -676,6 +685,7 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
    iEvent.put(std::move(L1EGXtalClusterNoCuts),"L1EGXtalClusterNoCuts");
    iEvent.put(std::move(L1EGXtalClusterWithCuts), "L1EGXtalClusterWithCuts" );
    iEvent.put(std::move(L1EGCollectionWithCuts), "L1EGCollectionWithCuts" );
+   iEvent.put(std::move(L1EGXtals), "L1EGXtals");
 }
 
 

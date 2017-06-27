@@ -7,6 +7,7 @@
 #include <algorithm>
 #include "DataFormats/Candidate/interface/LeafCandidate.h"
 #include "DataFormats/DetId/interface/DetId.h"
+#include "DataFormats/DetId/interface/DetIdCollection.h"
 
 namespace l1slhc
 {
@@ -34,6 +35,9 @@ namespace l1slhc
          std::reverse(info.begin(), info.end());
          crystalPt_ = info;
       };
+      void SetDetIdInfo(DetIdCollection &detids){
+	detIds_ = detids;
+      };
       void SetExperimentalParams(const std::map<std::string, float> &params) { experimentalParams_ = params; };
       const std::map<std::string, float> GetExperimentalParams() const { return experimentalParams_; };
       inline float GetExperimentalParam(std::string name) const { return experimentalParams_.at(name); };
@@ -48,7 +52,9 @@ namespace l1slhc
       // The index range depends on the algorithm eta,phi window, currently 3x5
       // The pt should always be ordered.
       inline float GetCrystalPt(unsigned int index) const { return (index < crystalPt_.size()) ? crystalPt_[index] : 0.; };
-    
+      inline DetId GetDetId(unsigned int index) const {return (index < detIds_.size()) ? detIds_[index] : DetId(0); }
+      inline unsigned int GetNXtals() const {return detIds_.size();}
+
     private:
       // HCal energy in region behind cluster (for size, look in producer) / ECal energy in cluster
       float hovere_;
@@ -74,6 +80,8 @@ namespace l1slhc
       bool photonWP80_;
       // Crystal pt (in order of strength) for all crystals in the cluster
       std::vector<float> crystalPt_;
+      // List of DetIds used in the cluster
+      DetIdCollection detIds_;
       // For investigating novel algorithm parameters
       std::map<std::string, float> experimentalParams_;
   };
