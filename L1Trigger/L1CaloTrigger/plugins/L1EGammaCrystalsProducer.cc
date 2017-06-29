@@ -197,6 +197,7 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
    HcalTrigTowerGeometry theTrigTowerGeometry(hcTopology_);
    
    std::vector<SimpleCaloHit> ecalhits;
+   std::vector<SimpleCaloHit> ecalhits_nofilter;
    std::vector<SimpleCaloHit> hcalhits;
    
    // Retrieve the ecal barrel hits
@@ -213,7 +214,6 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
          {
 
             float et = hit.encodedEt()/8.; // Et is 10 bit, by keeping the ADC saturation Et at 120 GeV it means that you have to divide by 8
-            if (et < EcalTpEtMin) continue; // keep the 500 MeV ET Cut
 
             auto cell = ebGeometry->getGeometry(hit.id());
             SimpleCaloHit ehit;
@@ -227,6 +227,8 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
             //std::cout << " -- ECAL TP Et: " << ehit.energy << std::endl;
             //std::cout << totNumHits << " -- ehit iPhi: " << ehit.id.iphi() << " -- tp iPhi: " << hit.id().iphi() << std::endl;
             //std::cout << " -- iEta: " << ehit.id.ieta() << std::endl;
+	    ecalhits_nofilter.push_back(ehit);
+            if (et < EcalTpEtMin) continue; // keep the 500 MeV ET Cut
             ecalhits.push_back(ehit);
             totNumHits++;
          }
@@ -350,7 +352,7 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
    std::unique_ptr<l1extra::L1EmParticleCollection> L1EGCollectionWithCuts( new l1extra::L1EmParticleCollection );
 
    std::unique_ptr<std::vector<std::pair<DetId,float> > > L1EGXtals(new std::vector<std::pair<DetId,float> >());
-   for(const auto& hit : ecalhits) L1EGXtals->push_back(std::pair<DetId,float>(hit.id,hit.pt()));
+   for(const auto& hit : ecalhits_nofilter) L1EGXtals->push_back(std::pair<DetId,float>(hit.id,hit.pt()));
 
    // Clustering algorithm
    while(true)
