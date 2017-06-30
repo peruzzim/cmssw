@@ -173,7 +173,6 @@ L1EGCrystalClusterProducer::L1EGCrystalClusterProducer(const edm::ParameterSet& 
    produces<l1slhc::L1EGCrystalClusterCollection>("L1EGXtalClusterNoCuts");
    produces<l1slhc::L1EGCrystalClusterCollection>("L1EGXtalClusterWithCuts");
    produces<l1extra::L1EmParticleCollection>("L1EGCollectionWithCuts");
-   produces<std::vector<std::pair<DetId,float> > >("L1EGXtals");
 
    // Get tower mapping
    if (useTowerMap) {
@@ -350,9 +349,6 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
    std::unique_ptr<l1slhc::L1EGCrystalClusterCollection> L1EGXtalClusterNoCuts (new l1slhc::L1EGCrystalClusterCollection );
    std::unique_ptr<l1slhc::L1EGCrystalClusterCollection> L1EGXtalClusterWithCuts( new l1slhc::L1EGCrystalClusterCollection );
    std::unique_ptr<l1extra::L1EmParticleCollection> L1EGCollectionWithCuts( new l1extra::L1EmParticleCollection );
-
-   std::unique_ptr<std::vector<std::pair<DetId,float> > > L1EGXtals(new std::vector<std::pair<DetId,float> >());
-   for(const auto& hit : ecalhits_nofilter) L1EGXtals->push_back(std::pair<DetId,float>(hit.id,hit.pt()));
 
    // Clustering algorithm
    while(true)
@@ -687,7 +683,6 @@ void L1EGCrystalClusterProducer::produce(edm::Event& iEvent, const edm::EventSet
    iEvent.put(std::move(L1EGXtalClusterNoCuts),"L1EGXtalClusterNoCuts");
    iEvent.put(std::move(L1EGXtalClusterWithCuts), "L1EGXtalClusterWithCuts" );
    iEvent.put(std::move(L1EGCollectionWithCuts), "L1EGCollectionWithCuts" );
-   iEvent.put(std::move(L1EGXtals), "L1EGXtals");
 }
 
 

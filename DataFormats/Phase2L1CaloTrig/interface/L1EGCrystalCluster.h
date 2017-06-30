@@ -52,6 +52,7 @@ namespace l1slhc
       // The index range depends on the algorithm eta,phi window, currently 3x5
       // The pt should always be ordered.
       inline float GetCrystalPt(unsigned int index) const { return (index < crystalPt_.size()) ? crystalPt_[index] : 0.; };
+      inline DetIdCollection GetDetIdCollection() const {return detIds_;};
       inline DetId GetDetId(unsigned int index) const {return (index < detIds_.size()) ? detIds_[index] : DetId(0); }
       inline unsigned int GetNXtals() const {return detIds_.size();}
 

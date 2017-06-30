@@ -1,4 +1,0 @@
-<lcgdict>
-    <class name="std::vector<std::pair<DetId,float> >" />
-    <class name="edm::Wrapper<std::vector<std::pair<DetId,float> > >" />
-</lcgdict>
