@@ -41,6 +41,9 @@ slimmedMuonsWithUserData = cms.EDProducer("PATMuonUserDataEmbedder",
         ptRatio = cms.InputTag("ptRatioRelForMu:ptRatio"),
         ptRel = cms.InputTag("ptRatioRelForMu:ptRel"),
         jetNDauChargedMVASel = cms.InputTag("ptRatioRelForMu:jetNDauChargedMVASel"),
+        ptRatioVetoPFLeptons = cms.InputTag("ptRatioRelForMu:ptRatioVetoPFLeptons"),
+        ptRelVetoPFLeptons = cms.InputTag("ptRatioRelForMu:ptRelVetoPFLeptons"),
+        jetNDauChargedMVASelVetoPFLeptons = cms.InputTag("ptRatioRelForMu:jetNDauChargedMVASelVetoPFLeptons"),
      ),
      userCands = cms.PSet(
         jetForLepJetVar = cms.InputTag("ptRatioRelForMu:jetForLepJetVar") # warning: Ptr is null if no match is found
@@ -106,6 +109,16 @@ muonTable = cms.EDProducer("SimpleCandidateFlatTableProducer",
         tightId = Var("passed('CutBasedIdTight')",bool,doc="cut-based ID, tight WP"),
         softId = Var("passed('SoftCutBasedId')",bool,doc="soft cut-based ID"),
         highPtId = Var("?passed('CutBasedIdGlobalHighPt')?2:passed('CutBasedIdTrkHighPt')","uint8",doc="high-pT cut-based ID (1 = tracker high pT, 2 = global high pT, which includes tracker high pT)"),
+
+        jetNDauChargedMVASel = Var("userFloat('jetNDauChargedMVASel')",float),
+        jetPtRel = Var("userFloat('ptRel')",float),
+        jetPtRatio = Var("userFloat('ptRatio')",float),
+        jetNDauChargedMVASelVetoPFLeptons = Var("userFloat('jetNDauChargedMVASelVetoPFLeptons')",float),
+        jetPtRelVetoPFLeptons = Var("userFloat('ptRelVetoPFLeptons')",float),
+        jetPtRatioVetoPFLeptons = Var("userFloat('ptRatioVetoPFLeptons')",float),
+        jetBTagCSV = Var("?userCand('jetForLepJetVar').isNonnull()?userCand('jetForLepJetVar').bDiscriminator('pfCombinedInclusiveSecondaryVertexV2BJetTags'):-99.0",float),
+        jetBTagDeepB = Var("?userCand('jetForLepJetVar').isNonnull()?(userCand('jetForLepJetVar').bDiscriminator('pfDeepCSVJetTags:probb')+userCand('jetForLepJetVar').bDiscriminator('pfDeepCSVJetTags:probbb')):-99.0",float),
+
     ),
     externalVariables = cms.PSet(
         mvaTTH = ExtVar(cms.InputTag("muonMVATTH"),float, doc="TTH MVA lepton ID score",precision=14),

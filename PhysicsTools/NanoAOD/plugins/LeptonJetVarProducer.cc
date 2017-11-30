@@ -53,8 +53,11 @@ class LeptonJetVarProducer : public edm::global::EDProducer<> {
     srcVtx_(consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("srcVtx")))
   {
     produces<edm::ValueMap<float>>("ptRatio");
+    produces<edm::ValueMap<float>>("ptRatioVetoPFLeptons");
     produces<edm::ValueMap<float>>("ptRel");
+    produces<edm::ValueMap<float>>("ptRelVetoPFLeptons");
     produces<edm::ValueMap<float>>("jetNDauChargedMVASel");
+    produces<edm::ValueMap<float>>("jetNDauChargedMVASelVetoPFLeptons");
     produces<edm::ValueMap<reco::CandidatePtr>>("jetForLepJetVar");
   }
   ~LeptonJetVarProducer() override {};
@@ -64,7 +67,7 @@ class LeptonJetVarProducer : public edm::global::EDProducer<> {
    private:
   void produce(edm::StreamID, edm::Event&, const edm::EventSetup&) const override;
 
-  std::tuple<float,float,float> calculatePtRatioRel(edm::Ptr<reco::Candidate> lep, edm::Ptr<pat::Jet> jet, const reco::Vertex &vtx) const;
+  std::tuple<float,float,float> calculatePtRatioRel(edm::Ptr<reco::Candidate> lep, edm::Ptr<pat::Jet> jet, const reco::Vertex &vtx, bool vetoPFLeptons = false) const;
 
       // ----------member data ---------------------------
 
@@ -103,8 +106,11 @@ LeptonJetVarProducer<T>::produce(edm::StreamID streamID, edm::Event& iEvent, con
   unsigned int nLep = srcLep->size();
 
   std::vector<float> ptRatio(nLep,-1);
+  std::vector<float> ptRatioVetoPFLeptons(nLep,-1);
   std::vector<float> ptRel(nLep,-1);
+  std::vector<float> ptRelVetoPFLeptons(nLep,-1);
   std::vector<float> jetNDauChargedMVASel(nLep,0);
+  std::vector<float> jetNDauChargedMVASelVetoPFLeptons(nLep,0);
   std::vector<reco::CandidatePtr> jetForLepJetVar(nLep,reco::CandidatePtr());
 
   const auto & pv = (*srcVtx)[0];
@@ -114,10 +120,14 @@ LeptonJetVarProducer<T>::produce(edm::StreamID streamID, edm::Event& iEvent, con
       auto lep = srcLep->ptrAt(il);
       auto jet = srcJet->ptrAt(ij);
       if(matchByCommonSourceCandidatePtr(*lep,*jet)){
-	  auto res = calculatePtRatioRel(lep,jet,pv);
+	  auto res = calculatePtRatioRel(lep,jet,pv,false);
 	  ptRatio[il] = std::get<0>(res);
 	  ptRel[il] = std::get<1>(res);
 	  jetNDauChargedMVASel[il] = std::get<2>(res);
+	  auto resVetoPFLeptons = calculatePtRatioRel(lep,jet,pv,true);
+	  ptRatioVetoPFLeptons[il] = std::get<0>(resVetoPFLeptons);
+	  ptRelVetoPFLeptons[il] = std::get<1>(resVetoPFLeptons);
+	  jetNDauChargedMVASelVetoPFLeptons[il] = std::get<2>(resVetoPFLeptons);
 	  jetForLepJetVar[il] = jet;
 	  break; // take leading jet with shared source candidates
 	}
@@ -142,6 +152,24 @@ LeptonJetVarProducer<T>::produce(edm::StreamID streamID, edm::Event& iEvent, con
   fillerNDau.fill();
   iEvent.put(std::move(jetNDauChargedMVASelV),"jetNDauChargedMVASel");
 
+  std::unique_ptr<edm::ValueMap<float>> ptRatioVetoPFLeptonsV(new edm::ValueMap<float>());
+  edm::ValueMap<float>::Filler fillerRatioVetoPFLeptons(*ptRatioVetoPFLeptonsV);
+  fillerRatioVetoPFLeptons.insert(srcLep,ptRatioVetoPFLeptons.begin(),ptRatioVetoPFLeptons.end());
+  fillerRatioVetoPFLeptons.fill();
+  iEvent.put(std::move(ptRatioVetoPFLeptonsV),"ptRatioVetoPFLeptons");
+
+  std::unique_ptr<edm::ValueMap<float>> ptRelVetoPFLeptonsV(new edm::ValueMap<float>());
+  edm::ValueMap<float>::Filler fillerRelVetoPFLeptons(*ptRelVetoPFLeptonsV);
+  fillerRelVetoPFLeptons.insert(srcLep,ptRelVetoPFLeptons.begin(),ptRelVetoPFLeptons.end());
+  fillerRelVetoPFLeptons.fill();
+  iEvent.put(std::move(ptRelVetoPFLeptonsV),"ptRelVetoPFLeptons");
+
+  std::unique_ptr<edm::ValueMap<float>> jetNDauChargedMVASelVetoPFLeptonsV(new edm::ValueMap<float>());
+  edm::ValueMap<float>::Filler fillerNDauVetoPFLeptons(*jetNDauChargedMVASelVetoPFLeptonsV);
+  fillerNDauVetoPFLeptons.insert(srcLep,jetNDauChargedMVASelVetoPFLeptons.begin(),jetNDauChargedMVASelVetoPFLeptons.end());
+  fillerNDauVetoPFLeptons.fill();
+  iEvent.put(std::move(jetNDauChargedMVASelVetoPFLeptonsV),"jetNDauChargedMVASelVetoPFLeptons");
+
   std::unique_ptr<edm::ValueMap<reco::CandidatePtr>> jetForLepJetVarV(new edm::ValueMap<reco::CandidatePtr>());
   edm::ValueMap<reco::CandidatePtr>::Filler fillerjetForLepJetVar(*jetForLepJetVarV);
   fillerjetForLepJetVar.insert(srcLep,jetForLepJetVar.begin(),jetForLepJetVar.end());
@@ -153,14 +181,34 @@ LeptonJetVarProducer<T>::produce(edm::StreamID streamID, edm::Event& iEvent, con
 
 template <typename T>
 std::tuple<float,float,float>
-LeptonJetVarProducer<T>::calculatePtRatioRel(edm::Ptr<reco::Candidate> lep, edm::Ptr<pat::Jet> jet, const reco::Vertex &vtx) const {
+LeptonJetVarProducer<T>::calculatePtRatioRel(edm::Ptr<reco::Candidate> lep, edm::Ptr<pat::Jet> jet, const reco::Vertex &vtx, bool vetoPFLeptons) const {
  
   auto rawp4 = jet->correctedP4("Uncorrected");
   auto lepp4 = lep->p4();
+  auto lepp4_subtr = lepp4;
+  std::vector<reco::CandidatePtr> vetoedPFLeptons;
+
+  if (vetoPFLeptons){
+    for(const auto _d : jet->daughterPtrVector()) {
+
+      auto pdgId = abs(_d->pdgId());
+      if (pdgId!=11 && pdgId!=13) continue;
+
+      bool matched = false;
+      for (unsigned int i = 0, n = lep->numberOfSourceCandidatePtrs(); i < n; ++i) {
+	auto c1s = lep->sourceCandidatePtr(i);
+	if (c1s==_d) {matched = true; break;}
+      }
+      if (matched) continue;
+
+      lepp4_subtr += _d->p4();
+      vetoedPFLeptons.push_back(_d);
+    }
+  }
 
   if ((rawp4-lepp4).R()<1e-4) return std::tuple<float,float,float>(1.0,0.0,0.0);
 
-  auto jetp4 = (rawp4 - lepp4*(1.0/jet->jecFactor("L1FastJet")))*(jet->pt()/rawp4.pt())+lepp4;
+  auto jetp4 = (rawp4 - lepp4_subtr*(1.0/jet->jecFactor("L1FastJet")))*(jet->pt()/rawp4.pt())+lepp4;
   auto ptratio = lepp4.pt()/jetp4.pt();
   auto ptrel = lepp4.Vect().Cross((jetp4-lepp4).Vect().Unit()).R();
 
@@ -171,6 +219,7 @@ LeptonJetVarProducer<T>::calculatePtRatioRel(edm::Ptr<reco::Candidate> lep, edm:
     if (d->fromPV()<=1) continue;
     if (deltaR(*d,*lep)>0.4) continue;
     if (!(d->hasTrackDetails())) continue;
+    if (vetoPFLeptons && std::find(vetoedPFLeptons.begin(),vetoedPFLeptons.end(),_d)!=vetoedPFLeptons.end()) continue;
     auto tk = d->pseudoTrack();
     if(tk.pt()>1 &&
        tk.hitPattern().numberOfValidHits()>=8 &&
