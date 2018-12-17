@@ -294,3 +294,4 @@ _80x_sequence.insert(_80x_sequence.index(jetSequence), extraFlagsProducers)
 _80x_sequence.insert(_80x_sequence.index(simpleCleanerTable)+1, extraFlagsTable)
 
 run2_miniAOD_80XLegacy.toReplaceWith( nanoSequenceCommon, _80x_sequence)
+ 
