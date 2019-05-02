@@ -93,6 +93,24 @@ metFixEE2017Table.src = cms.InputTag("slimmedMETsFixEE2017")
 metFixEE2017Table.name = cms.string("METFixEE2017")
 metFixEE2017Table.doc = cms.string("Type-1 corrected PF MET, with fixEE2017 definition")
 
+corrT1METJets = cms.EDProducer("PATJetUserDataEmbedder",
+     src = cms.InputTag("basicJetsForMet"),
+     userFloats = cms.PSet()
+)
+corrT1METJetTable = cms.EDProducer("SimpleCandidateFlatTableProducer",
+    src = cms.InputTag("corrT1METJets"),
+    cut = cms.string(""),
+    name = cms.string("CorrT1METJet"),
+    doc  = cms.string("jets entering Type-1 MET correction"),
+    singleton = cms.bool(False), # the number of entries is variable
+    extension = cms.bool(False), # this is the main table for the jets
+    variables = cms.PSet(
+        rawPt = Var("pt()*jecFactor('Uncorrected')",float,precision=10),
+        eta  = Var("eta",  float,precision=12),
+        phi = Var("phi", float, precision=12),
+        area = Var("jetArea()", float, doc="jet catchment area, for JECs",precision=10),
+    )
+)
 
 metMCTable = cms.EDProducer("SimpleCandidateFlatTableProducer",
     src = metTable.src,
