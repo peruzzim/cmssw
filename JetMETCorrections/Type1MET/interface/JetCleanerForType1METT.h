@@ -104,10 +104,10 @@ class JetCleanerForType1METT : public edm::stream::EDProducer<>
            skipMuonSelection_.reset( new StringCutObjectSelector<reco::Candidate>(skipMuonSelection_string,true) ) ;
        }
 
-       addMuonSubtrRawPtAsValueMap_ = cfg.getParameter<bool>("addMuonSubtrRawPtAsValueMap");
+       calcMuonSubtrRawPtAsValueMap_ = cfg.getParameter<bool>("calcMuonSubtrRawPtAsValueMap");
 
        produces<std::vector<T> >();
-       if (addMuonSubtrRawPtAsValueMap_) produces<edm::ValueMap<float>>("MuonSubtrRawPt");
+       if (calcMuonSubtrRawPtAsValueMap_) produces<edm::ValueMap<float>>("MuonSubtrRawPt");
       }
 
     static void fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
@@ -123,7 +123,7 @@ class JetCleanerForType1METT : public edm::stream::EDProducer<>
         desc.add<double>("skipEMfractionThreshold");
         desc.add<bool>("skipMuons");
         desc.add<std::string>("skipMuonSelection");
-	desc.add<bool>("addMuonSubtrRawPtAsValueMap",false)->setComment("store muon-subtracted raw pt as a ValueMap for jets passing the selection");
+	desc.add<bool>("calcMuonSubtrRawPtAsValueMap",false)->setComment("calculate muon-subtracted raw pt as a ValueMap for the input collection (only for selected jets, zero for others)");
         descriptions.addDefault(desc);
     }
 
@@ -149,7 +149,7 @@ class JetCleanerForType1METT : public edm::stream::EDProducer<>
     std::unique_ptr< std::vector<T> > cleanedJets( new std::vector<T>() );
 
     int numJets = jets->size();
-    std::vector<float> muonSubtrRawPt;
+    std::vector<float> muonSubtrRawPt(numJets,0);
 
     for(int jetIndex=0;jetIndex<numJets; ++jetIndex ) {
       const T& jet = jets->at(jetIndex);
@@ -188,16 +188,16 @@ class JetCleanerForType1METT : public edm::stream::EDProducer<>
       if(corrJetP4.pt()<type1JetPtThreshold_) continue;
 
       cleanedJets->push_back(jet);
-      if (addMuonSubtrRawPtAsValueMap_) muonSubtrRawPt.push_back(rawJetP4.Pt());
+      if (calcMuonSubtrRawPtAsValueMap_) muonSubtrRawPt[jetIndex]=rawJetP4.Pt();
 
     }
 
-    auto hout = evt.put(std::move(cleanedJets));
+    evt.put(std::move(cleanedJets));
 
-    if (addMuonSubtrRawPtAsValueMap_) {
+    if (calcMuonSubtrRawPtAsValueMap_) {
       std::unique_ptr<edm::ValueMap<float>> muonSubtrRawPtV(new edm::ValueMap<float>());
       edm::ValueMap<float>::Filler fillerMuonSubtrRawPt(*muonSubtrRawPtV);
-      fillerMuonSubtrRawPt.insert(hout,muonSubtrRawPt.begin(),muonSubtrRawPt.end());
+      fillerMuonSubtrRawPt.insert(jets,muonSubtrRawPt.begin(),muonSubtrRawPt.end());
       fillerMuonSubtrRawPt.fill();
       evt.put(std::move(muonSubtrRawPtV),"MuonSubtrRawPt");
     }
@@ -232,7 +232,7 @@ class JetCleanerForType1METT : public edm::stream::EDProducer<>
   // from jet energy before compute JECs/propagating JECs to Type 1 + 2 MET corrections
   std::unique_ptr<StringCutObjectSelector< reco::Candidate> > skipMuonSelection_;
 
-  bool addMuonSubtrRawPtAsValueMap_; // store muon-subtracted raw pt as a ValueMap for jets passing the selection
+  bool calcMuonSubtrRawPtAsValueMap_; // calculate muon-subtracted raw pt as a ValueMap for the input collection (only for selected jets, zero for others)
 };
 
 #endif

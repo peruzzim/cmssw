@@ -171,16 +171,19 @@ from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMet
 #from PhysicsTools.PatAlgos.slimming.puppiForMET_cff import makePuppiesFromMiniAOD
 def nanoAOD_recalibrateMETs(process,isData):
     runMetCorAndUncFromMiniAOD(process,isData=isData)
-    process.nanoSequenceCommon.insert(process.nanoSequenceCommon.index(jetSequence),cms.Sequence(process.fullPatMetSequence))
-    runMetCorAndUncFromMiniAOD(process,isData=isData,jetSelection="abs(eta)<9.9",postfix='ForCorrT1METJets')
-    process.basicJetsForMetForCorrT1METJets.type1JetPtThreshold = 0.0
-    process.basicJetsForMetForCorrT1METJets.addMuonSubtrRawPtAsValueMap = cms.bool(True)
-    process.nanoSequenceCommon.insert(process.nanoSequenceCommon.index(jetSequence),cms.Sequence(process.fullPatMetSequenceForCorrT1METJets))
-    corrT1METJets.src = cms.InputTag("basicJetsForMetForCorrT1METJets")
-    corrT1METJets.userFloats.muonSubtrRawPt = cms.InputTag("basicJetsForMetForCorrT1METJets:MuonSubtrRawPt")
-    corrT1METJetTable.cut = "abs(eta)<9.9"
-    corrT1METJetTable.variables.muonSubtrFactor = Var("1-userFloat('muonSubtrRawPt')/(pt()*jecFactor('Uncorrected'))",float,doc="1-(muon-subtracted raw pt)/(raw pt)",precision=6)
-    process.metTables += cms.Sequence(corrT1METJets+corrT1METJetTable)
+    process.basicJetsForMetForCorrT1METJets = process.basicJetsForMet.clone(
+        src = process.slimmedJetsWithUserData.src,
+        skipEM = False,
+        type1JetPtThreshold = 0.0,
+        calcMuonSubtrRawPtAsValueMap = cms.bool(True),
+    )
+    process.nanoSequenceCommon.insert(process.nanoSequenceCommon.index(jetSequence),cms.Sequence(process.fullPatMetSequence+process.basicJetsForMetForCorrT1METJets))
+    slimmedJetsWithUserData.userFloats.muonSubtrRawPt = cms.InputTag("basicJetsForMetForCorrT1METJets:MuonSubtrRawPt")
+    corrT1METJetTable.src = cms.InputTag("updatedJets")
+    corrT1METJetTable.cut = "pt<15 && abs(eta)<9.9"
+    for table in jetTable, corrT1METJetTable:
+        table.variables.muonSubtrFactor = Var("1-userFloat('muonSubtrRawPt')/(pt()*jecFactor('Uncorrected'))",float,doc="1-(muon-subtracted raw pt)/(raw pt)",precision=6)
+    process.metTables += corrT1METJetTable
 #    makePuppiesFromMiniAOD(process,True) # call this before in the global customizer otherwise it would reset photon IDs in VID
 #    runMetCorAndUncFromMiniAOD(process,isData=isData,metType="Puppi",postfix="Puppi",jetFlavor="AK4PFPuppi")
 #    process.puppiNoLep.useExistingWeights = False
