@@ -18,7 +18,6 @@ from PhysicsTools.NanoAOD.isotracks_cff import *
 from PhysicsTools.NanoAOD.NanoAODEDMEventContent_cff import *
 
 from Configuration.Eras.Modifier_run2_miniAOD_80XLegacy_cff import run2_miniAOD_80XLegacy
-from Configuration.Eras.Modifier_run2_nanoAOD_92X_cff import run2_nanoAOD_92X
 from Configuration.Eras.Modifier_run2_nanoAOD_94X2016_cff import run2_nanoAOD_94X2016
 from Configuration.Eras.Modifier_run2_nanoAOD_94XMiniAODv1_cff import run2_nanoAOD_94XMiniAODv1
 from Configuration.Eras.Modifier_run2_nanoAOD_94XMiniAODv2_cff import run2_nanoAOD_94XMiniAODv2
@@ -92,13 +91,6 @@ for modifier in run2_miniAOD_80XLegacy, run2_nanoAOD_94X2016: # to be updated wh
         )
     )
 
-run2_nanoAOD_92X.toModify(btagWeightTable,                      #92X corresponds to MCv1, for which SFs are unavailable
-    weightFiles = cms.vstring(
-        "unavailable",
-        "unavailable",                    
-        "unavailable"                                            
-    )
-)                    
 
 genWeightsTable = cms.EDProducer("GenWeightsTableProducer",
     genEvent = cms.InputTag("generator"),
@@ -123,7 +115,9 @@ lheInfoTable = cms.EDProducer("LHETablesProducer",
     storeLHEParticles = cms.bool(True) 
 )
 
-l1bits=cms.EDProducer("L1TriggerResultsConverter", src=cms.InputTag("gtStage2Digis"), legacyL1=cms.bool(False))
+l1bits=cms.EDProducer("L1TriggerResultsConverter", src=cms.InputTag("gtStage2Digis"), legacyL1=cms.bool(False),
+                      storeUnprefireableBit=cms.bool(True), src_ext=cms.InputTag("gtStage2Digis"))
+(run2_miniAOD_80XLegacy | run2_nanoAOD_94X2016 | run2_nanoAOD_94XMiniAODv1 | run2_nanoAOD_94XMiniAODv2 | run2_nanoAOD_102Xv1).toModify(l1bits, storeUnprefireableBit=False)
 
 nanoSequenceCommon = cms.Sequence(
         nanoMetadata + jetSequence + muonSequence + tauSequence + electronSequence+photonSequence+vertexSequence+
@@ -164,12 +158,8 @@ def nanoAOD_addDeepInfo(process,addDeepBTag,addDeepFlavour):
                postfix = 'WithDeepInfo',
            )
     process.load("Configuration.StandardSequences.MagneticField_cff")
-    process.looseJetId.src="selectedUpdatedPatJetsWithDeepInfo"
-    process.tightJetId.src="selectedUpdatedPatJetsWithDeepInfo"
-    process.tightJetIdLepVeto.src="selectedUpdatedPatJetsWithDeepInfo"
-    process.bJetVars.src="selectedUpdatedPatJetsWithDeepInfo"
-    process.slimmedJetsWithUserData.src="selectedUpdatedPatJetsWithDeepInfo"
-    process.qgtagger80x.srcJets="selectedUpdatedPatJetsWithDeepInfo"
+    process.jetCorrFactorsNano.src="selectedUpdatedPatJetsWithDeepInfo"
+    process.updatedJets.jetSource="selectedUpdatedPatJetsWithDeepInfo"
     if addDeepFlavour:
         process.pfDeepFlavourJetTagsWithDeepInfo.graph_path = 'RecoBTag/Combined/data/DeepFlavourV03_10X_training/constant_graph.pb'
         process.pfDeepFlavourJetTagsWithDeepInfo.lp_names = ["cpf_input_batchnorm/keras_learning_phase"]
@@ -193,7 +183,7 @@ def nanoAOD_activateVID(process):
     for modname in electron_id_modules_WorkingPoints_nanoAOD.modules:
         setupAllVIDIdsInModule(process,modname,setupVIDElectronSelection)
     process.electronSequence.insert(process.electronSequence.index(bitmapVIDForEle),process.egmGsfElectronIDSequence)
-    for modifier in run2_miniAOD_80XLegacy, run2_nanoAOD_92X:
+    for modifier in run2_miniAOD_80XLegacy, :
         modifier.toModify(process.electronMVAValueMapProducer, srcMiniAOD = "slimmedElectronsUpdated")
         modifier.toModify(process.egmGsfElectronIDs, physicsObjectSrc = "slimmedElectronsUpdated")
         if hasattr(process,"heepIDVarValueMaps"):
@@ -226,10 +216,8 @@ def nanoAOD_addDeepInfoAK8(process,addDeepBTag,addDeepBoostedJet,jecPayload):
        postfix='AK8WithDeepInfo',
        printWarning = False
        )
-    process.looseJetIdAK8.src = "selectedUpdatedPatJetsAK8WithDeepInfo"
-    process.tightJetIdAK8.src = "selectedUpdatedPatJetsAK8WithDeepInfo"
-    process.tightJetIdLepVetoAK8.src = "selectedUpdatedPatJetsAK8WithDeepInfo"
-    process.slimmedJetsAK8WithUserData.src = "selectedUpdatedPatJetsAK8WithDeepInfo"
+    process.jetCorrFactorsAK8.src="selectedUpdatedPatJetsAK8WithDeepInfo"
+    process.updatedJetsAK8.jetSource="selectedUpdatedPatJetsAK8WithDeepInfo"
     return process
 
 from PhysicsTools.PatUtils.tools.runMETCorrectionsAndUncertainties import runMetCorAndUncFromMiniAOD
@@ -273,14 +261,20 @@ def nanoAOD_customizeData(process):
     process = nanoAOD_customizeCommon(process)
     process = nanoAOD_recalibrateMETs(process,isData=True)
     for modifier in run2_nanoAOD_94XMiniAODv1, run2_nanoAOD_94XMiniAODv2:
-        modifier.toModify(process, nanoAOD_runMETfixEE2017(process,isData=True))
+        modifier.toModify(process, lambda p: nanoAOD_runMETfixEE2017(p,isData=True))
+    process.unpackedPatTrigger.triggerResults = "TriggerResults::reHLT"
+    (run2_miniAOD_80XLegacy | run2_nanoAOD_94X2016 | run2_nanoAOD_94XMiniAODv1 | run2_nanoAOD_94XMiniAODv2 | run2_nanoAOD_102Xv1).toModify(
+        unpackedPatTrigger,
+        triggerResults = "TriggerResults::HLT"
+    )
+
     return process
 
 def nanoAOD_customizeMC(process):
     process = nanoAOD_customizeCommon(process)
     process = nanoAOD_recalibrateMETs(process,isData=False)
     for modifier in run2_nanoAOD_94XMiniAODv1, run2_nanoAOD_94XMiniAODv2:
-        modifier.toModify(process, nanoAOD_runMETfixEE2017(process,isData=False))
+        modifier.toModify(process, lambda p: nanoAOD_runMETfixEE2017(p,isData=False))
     return process
 
 ### Era dependent customization
