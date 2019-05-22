@@ -87,3 +87,7 @@ process.add_(cms.Service('InitRootHandlers', EnableIMT = cms.untracked.bool(Fals
 from Configuration.StandardSequences.earlyDeleteSettings_cff import customiseEarlyDelete
 process = customiseEarlyDelete(process)
 # End adding early deletion
+process.MessageLogger.suppressInfo.append('genJetAK8FlavourAssociation')
+process.MessageLogger.suppressInfo.append('mergedGenParticles')
+process.MessageLogger.suppressWarning.append('genJetAK8FlavourAssociation')
+process.MessageLogger.suppressWarning.append('mergedGenParticles')
