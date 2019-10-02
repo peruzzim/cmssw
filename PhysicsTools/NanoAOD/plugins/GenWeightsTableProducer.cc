@@ -664,6 +664,7 @@ class GenWeightsTableProducer : public edm::global::EDProducer<edm::StreamCache<
 	  std::regex pdfw("LHE,\\s+id\\s+=\\s+(\\d+),\\s+group\\s+=\\s+(\\w+\\b),\\s+Member\\s+(\\d+)\\s+of\\ssets\\s+(\\w+\\b)");
 	  std::smatch groups;
 	  auto weightNames = genLumiInfoHead->weightNames();
+	  std::unordered_map<std::string,uint32_t> knownPDFSetsFromGenInfo_;
 	  for (auto line : weightNames) {
 	    if (std::regex_search(line,groups,scalew)) { // scale variation
 	      auto id = groups.str(1);
@@ -672,7 +673,17 @@ class GenWeightsTableProducer : public edm::global::EDProducer<edm::StreamCache<
 	      auto muf = groups.str(4);
 	      if (group=="Central scale variation") scaleVariationIDs.emplace_back(groups.str(1), groups.str(2), groups.str(3), groups.str(4));
 	    }
-	    // do something else for PDF here...
+	    else if (std::regex_search(line,groups,scalew)) { // PDF variation
+	      auto id = groups.str(1);
+	      auto group = groups.str(2);
+	      auto memberid = groups.str(3);
+	      auto pdfset = groups.str(4);
+	      if (knownPDFSetsFromGenInfo_.find(pdfset)==knownPDFSetsFromGenInfo_.end()) {
+		knownPDFSetsFromGenInfo_[pdfset] = std::atoi(id.c_str());
+		pdfSetWeightIDs.emplace_back(id,std::atoi(id.c_str()));
+	      }
+	      else pdfSetWeightIDs.back().add(id,std::atoi(id.c_str()));
+	    }
 	  }
 
 	  std::sort(scaleVariationIDs.begin(), scaleVariationIDs.end());
@@ -684,6 +695,29 @@ class GenWeightsTableProducer : public edm::global::EDProducer<edm::StreamCache<
 	    weightChoice.scaleWeightIDs.push_back(std::atoi(sw.wid.c_str()));
 	  }
 	  if (!scaleVariationIDs.empty()) weightChoice.scaleWeightsDoc = scaleDoc.str();
+
+	  std::stringstream pdfDoc; pdfDoc << "LHE pdf variation weights (w_var / w_nominal) for LHA names ";
+	  bool found = false;
+	  for (auto wantedpdf : lhaNameToID_) {
+	    auto pdfname = wantedpdf.first;
+	    if (knownPDFSetsFromGenInfo_.find(pdfname)==knownPDFSetsFromGenInfo_.end()) continue;
+	    uint32_t lhaid = knownPDFSetsFromGenInfo_.at(pdfname);
+	    for (const auto & pw : pdfSetWeightIDs) {
+	      if (pw.lhaIDs.first != lhaid) continue;
+	      if (pw.wids.size() == 1) continue; // only consider error sets
+	      pdfDoc << pdfname;
+	      for (auto x : pw.wids) weightChoice.pdfWeightIDs.push_back(std::atoi(x.c_str()));
+	      if (maxPdfWeights_ < pw.wids.size()) {
+		weightChoice.pdfWeightIDs.resize(maxPdfWeights_); // drop some replicas
+		pdfDoc << ", truncated to the first " << maxPdfWeights_ << " replicas";
+	      }
+	      weightChoice.pdfWeightsDoc = pdfDoc.str();
+	      found = true; break;
+	    }
+	    if (found) break;
+	  }
+
+
 	}
         // create an empty counter
         std::shared_ptr<CounterMap> globalBeginRunSummary(edm::Run const&, edm::EventSetup const&) const override {
