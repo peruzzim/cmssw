@@ -94,7 +94,11 @@ namespace {
       for (const auto &y : other.countermap) countermap[y.first].merge(y.second);
       active_el = nullptr;
     }
-    void clear() {for (auto x : countermap) x.second.clear();}
+    void clear() {
+      for (auto x : countermap) x.second.clear();
+      active_el = nullptr;
+      active_label = "";
+    }
     void setLabel(std::string label) { active_el = &(countermap[label]); active_label = label;}
     void checkLabelSet() { if (!active_el) throw cms::Exception("LogicError", "Called CounterMap::get() before setting the active label\n"); }
     Counter* get() { checkLabelSet(); return active_el; }
@@ -648,14 +652,14 @@ class GenWeightsTableProducer : public edm::global::EDProducer<edm::StreamCache<
             streamCache(id)->clear();
         }
         void streamBeginLuminosityBlock(edm::StreamID id, edm::LuminosityBlock const& lumiBlock, edm::EventSetup const& eventSetup) const override {
-	  auto counterMap = streamCache(id)->countermap;
+	  auto counterMap = &(streamCache(id)->countermap);
 	  edm::Handle<GenLumiInfoHeader> genLumiInfoHead;
 	  lumiBlock.getByToken(genLumiInfoHeadTag_,genLumiInfoHead);
 	  if (!genLumiInfoHead.isValid()) edm::LogWarning("LHETablesProducer") << "No GenLumiInfoHeader product found, will not fill generator model string.\n";
-	  counterMap.setLabel(genLumiInfoHead.isValid() ? genLumiInfoHead->configDescription() : "");
+	  counterMap->setLabel(genLumiInfoHead.isValid() ? genLumiInfoHead->configDescription() : "");
 
 	  if (!genLumiInfoHead.isValid()) return;
-	  auto weightChoice = streamCache(id)->weightChoice;
+	  auto weightChoice = &(streamCache(id)->weightChoice);
 
 	  std::vector<ScaleVarWeight> scaleVariationIDs;
 	  std::vector<PDFSetWeights>  pdfSetWeightIDs;
@@ -692,9 +696,9 @@ class GenWeightsTableProducer : public edm::global::EDProducer<edm::StreamCache<
 	    const auto & sw = scaleVariationIDs[isw];
 	    if (isw) scaleDoc << "; ";
 	    scaleDoc << "[" << isw << "] is " << sw.label;
-	    weightChoice.scaleWeightIDs.push_back(std::atoi(sw.wid.c_str()));
+	    weightChoice->scaleWeightIDs.push_back(std::atoi(sw.wid.c_str()));
 	  }
-	  if (!scaleVariationIDs.empty()) weightChoice.scaleWeightsDoc = scaleDoc.str();
+	  if (!scaleVariationIDs.empty()) weightChoice->scaleWeightsDoc = scaleDoc.str();
 
 	  std::stringstream pdfDoc; pdfDoc << "LHE pdf variation weights (w_var / w_nominal) for LHA names ";
 	  bool found = false;
@@ -706,12 +710,12 @@ class GenWeightsTableProducer : public edm::global::EDProducer<edm::StreamCache<
 	      if (pw.lhaIDs.first != lhaid) continue;
 	      if (pw.wids.size() == 1) continue; // only consider error sets
 	      pdfDoc << pdfname;
-	      for (auto x : pw.wids) weightChoice.pdfWeightIDs.push_back(std::atoi(x.c_str()));
+	      for (auto x : pw.wids) weightChoice->pdfWeightIDs.push_back(std::atoi(x.c_str()));
 	      if (maxPdfWeights_ < pw.wids.size()) {
-		weightChoice.pdfWeightIDs.resize(maxPdfWeights_); // drop some replicas
+		weightChoice->pdfWeightIDs.resize(maxPdfWeights_); // drop some replicas
 		pdfDoc << ", truncated to the first " << maxPdfWeights_ << " replicas";
 	      }
-	      weightChoice.pdfWeightsDoc = pdfDoc.str();
+	      weightChoice->pdfWeightsDoc = pdfDoc.str();
 	      found = true; break;
 	    }
 	    if (found) break;
