@@ -656,7 +656,12 @@ class GenWeightsTableProducer : public edm::global::EDProducer<edm::StreamCache<
 	  edm::Handle<GenLumiInfoHeader> genLumiInfoHead;
 	  lumiBlock.getByToken(genLumiInfoHeadTag_,genLumiInfoHead);
 	  if (!genLumiInfoHead.isValid()) edm::LogWarning("LHETablesProducer") << "No GenLumiInfoHeader product found, will not fill generator model string.\n";
-	  counterMap->setLabel(genLumiInfoHead.isValid() ? genLumiInfoHead->configDescription() : "");
+	  std::string label;
+	  if (genLumiInfoHead.isValid()) {
+	    label = genLumiInfoHead->configDescription();
+	    boost::replace_all(label,"-","_");
+	  }
+	  counterMap->setLabel(label);
 
 	  if (!genLumiInfoHead.isValid()) return;
 	  auto weightChoice = &(streamCache(id)->weightChoice);
