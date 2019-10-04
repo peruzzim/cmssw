@@ -2,7 +2,7 @@
 # using: 
 # Revision: 1.19 
 # Source: /local/reps/CMSSW/CMSSW/Configuration/Applications/python/ConfigBuilder.py,v 
-# with command line options: data102X_ABC -s NANO --data --eventcontent NANOAOD --datatier NANOAOD --filein file:input.root --conditions 102X_dataRun2_v11 -n -1 --era Run2_2018,run2_nanoAOD_102Xv1 --no_exec --customise_commands=process.add_(cms.Service('InitRootHandlers', EnableIMT = cms.untracked.bool(False)));process.MessageLogger.cerr.FwkReport.reportEvery=100
+# with command line options: data102X_ABC -s NANO --data --eventcontent NANOAOD --datatier NANOAOD --filein file:input.root --conditions 102X_dataRun2_v12 -n -1 --era Run2_2018,run2_nanoAOD_102Xv1 --no_exec --customise_commands=process.add_(cms.Service('InitRootHandlers', EnableIMT = cms.untracked.bool(False)));process.MessageLogger.cerr.FwkReport.reportEvery=100
 import FWCore.ParameterSet.Config as cms
 
 from Configuration.StandardSequences.Eras import eras
@@ -58,7 +58,7 @@ process.NANOAODoutput = cms.OutputModule("NanoAODOutputModule",
 
 # Other statements
 from Configuration.AlCa.GlobalTag import GlobalTag
-process.GlobalTag = GlobalTag(process.GlobalTag, '102X_dataRun2_v11', '')
+process.GlobalTag = GlobalTag(process.GlobalTag, '102X_dataRun2_v12', '')
 
 # Path and EndPath definitions
 process.nanoAOD_step = cms.Path(process.nanoSequence)
